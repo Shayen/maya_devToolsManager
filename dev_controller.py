@@ -22,9 +22,7 @@ class dev_tools_controller(object):
 		# If not config
 		if not os.path.exists(self.config_filePath) :
 			sturcture = {}
-			f = open(self.config_filePath, 'w')
-			f.write( json.dumps(sturcture,indent = 2) )
-			f.close()
+			self.save_config(sturcture)
 
 		# Load data
 		f = open(self.config_filePath, 'r')
@@ -32,7 +30,7 @@ class dev_tools_controller(object):
 		f.close()
 
 		# Check recent added module [When have new module]
-		allModules = set([i for i in os.listdir(modulePath) if os.path.isdir(modulePath + '/' + i)])
+		allModules = set([i for i in os.listdir(modulePath) if os.path.isdir(modulePath + '/' + i) and not i.startswith('.')])
 		diff_add = list(allModules.difference(set(data.keys()))) # find new module
 		diff_rem = list(set(data.keys()).difference(allModules)) # fine not exists module
 
@@ -48,17 +46,24 @@ class dev_tools_controller(object):
 				for module in diff_rem :
 					data.pop(module)
 
-			f = open(self.config_filePath, 'w')
-			f.write( json.dumps(data,indent = 2) )
-			f.close()
+			self.save_config(data)
 
+		print(data)
 		return data
+
+	def save_config(self,data):
+		''' write data to configure.json '''
+		f = open(self.config_filePath, 'w')
+		f.write( json.dumps(data,indent = 2) )
+		f.close()
 
 	def getmodules_Button(self):
 		impcmd = 'from dev_tools.{module} import {file}\nreload({file})\n{run_cmd}'
 
 		# Create button
 		for module in sorted(self.tool_data.keys()) :
+
+			print (module)
 			
 			runcmd 	 = self.tool_data[module]['runcmd']
 			mainfile = self.tool_data[module]['mainfile']
@@ -85,7 +90,7 @@ class dev_tools_controller(object):
 			cmds.text(l="mainfile")
 			cmds.textField(width = 200, tx= self.tool_data[module]['mainfile'])
 			cmds.text(l="runcmd")
-			cmds.textField(width = 200, tx= self.tool_data[module]['runcmd'])
+			cmds.textField(width = 200, tx= unicode(self.tool_data[module]['runcmd']).replace("\n",'\\n'))
 			cmds.setParent("..")
 			cmds.setParent("..")
 
@@ -95,26 +100,26 @@ class dev_tools_controller(object):
 		return layout	
 
 	def clearUI(self):
-		if cmds.window(_UIname_, exists = True):
-			cmds.deleteUI(_UIname_)
-			clearUI()
+		if cmds.window(self._UIname_, exists = True):
+			cmds.deleteUI(self._UIname_)
+			self.clearUI()
 		return
 
 	def show(self):
 		
-		clearUI()
+		self.clearUI()
 
 		cmds.window(self._UIname_, title = self._windowName_)
 		tabs = cmds.tabLayout(innerMarginWidth=5, innerMarginHeight=5)
 
-		tools = tools_tab()
+		tools = self.tools_tab()
 
-		setting = setting_tab()
+		setting = self.setting_tab()
 
 		cmds.tabLayout( tabs, e=True, tabLabel=((tools, 'Tools'), (setting, 'Setting')) )
-		cmds.showWindow(_UIname_)
+		cmds.showWindow(self._UIname_)
 
-		cmds.window(_UIname_, e=True, w= 220)
+		cmds.window(self._UIname_, e=True, w= 220)
 
 def run():
 	app = dev_tools_controller()
