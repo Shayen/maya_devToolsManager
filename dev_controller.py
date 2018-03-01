@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import subprocess
+import traceback
 
 from Qt import QtWidgets
 from Qt import QtCore
@@ -196,7 +197,8 @@ class tool_widget(QtWidgets.QWidget):
 			print(self.tool_command)
 			exec(self.tool_command)
 		except Exception as e:
-			print(e)
+			print('\n============ ERROR ============\n')
+			traceback.print_exc()
 			print(str(e) + "\nPlease check your tool's setting.")
 
 class dev_tools_controller(QtWidgets.QWidget):
@@ -251,7 +253,6 @@ class dev_tools_controller(QtWidgets.QWidget):
 			print (module)
 			
 			runcmd 	 = self.tool_data["tools"][module]['runcmd']
-			mainfile = self.tool_data["tools"][module]['mainfile'].split('.')[0]
 			location = self.tool_data["tools"][module]['location']
 
 			# tools_listWidget
@@ -274,6 +275,7 @@ class dev_tools_controller(QtWidgets.QWidget):
 
 		self.pushButton_saveSetting.clicked.connect(self.pushButton_saveSetting_onClicked)
 		self.pushButton_refresh.clicked.connect(self.__refresh)
+		self.pushButton_location_openExplorer.clicked.connect(self.pushButton_location_openExplorer_onClicked)
 
 	def checkLinkStatus(self,modulename, modulePath):
 
@@ -290,21 +292,40 @@ class dev_tools_controller(QtWidgets.QWidget):
 
 		save_config(config_filePath, self.tool_data)
 
+	def pushButton_location_openExplorer_onClicked(self):
+		dialog = QtWidgets.QFileDialog(self.base_instance)
+		dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+		dialog.setViewMode(QtWidgets.QFileDialog.Detail)
+		if dialog.exec_():
+			fileNames = dialog.selectedFiles()
+
+			print self.lineEdit_location.setText(fileNames[0])
+
 # #####################################################################
 
 def load_config(config_filePath):
 	
 	# If not config
 	if not os.path.exists(config_filePath) :
-		sturcture = {"setting":{},"tools":{}}
-		save_config(sturcture)
+		sturcture = {'setting':{'container_path':''},'tools':{}}
+		save_config(config_filePath, sturcture)
 
 	# Load data
 	f = open(config_filePath, 'r')
 	data = json.loads( f.read() )
 	f.close()
 
-	containerPath = data['setting']['container_path']
+	try:
+		containerPath = data['setting']['container_path']
+	except KeyError :
+
+		if not data.has_key('setting') :
+			data['setting'] = {'container_path':''}
+
+		containerPath = data['setting']['container_path']
+
+	if not os.path.exists(containerPath):
+		containerPath = os.path.dirname(__file__)
 
 	# Check recent added module [When have new module]
 	allModules = set([i for i in os.listdir(containerPath) \
@@ -363,6 +384,6 @@ if __name__ == '__main__':
 	# run()
 
 	app = QtWidgets.QApplication(sys.argv)
-	form = dev_tools_controller()
+	form = dev_tools_controller(getMayaWindow())
 	form.show()
 	app.exec_()
