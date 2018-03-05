@@ -1,2 +1,4 @@
 *.pyc
 /configure.json
+/maya_devToolsManager.sublime-workspace
+/maya_devToolsManager.sublime-project
