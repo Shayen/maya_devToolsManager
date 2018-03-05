@@ -4,21 +4,30 @@ import json
 import subprocess
 import traceback
 
-from Qt import QtWidgets
-from Qt import QtCore
-from Qt import QtGui
-from Qt import QtCompat
+# from Qt import QtWidgets
+# from Qt import QtCore
+# from Qt import QtGui
+# from Qt import QtCompat
+
+try:
+	from PySide2.QtCore import *
+	from PySide2.QtGui import *
+	from PySide2.QtWidgets import *
+	from PySide2.QtUiTools import *
+	from PySide2 import __version__
+	import shiboken2 as shiboken
+
+except ImportError:
+	from PySide.QtCore import *
+	from PySide.QtGui import *
+	from PySide.QtUiTools import *
+	from PySide import __version__
+	import shiboken
 
 import syntax
 reload(syntax)
 
 import maya.cmds as cmds
-
-try :
-	import shiboken as sbk
-except ImportError :
-	import shiboken2 as sbk
-
 import maya.OpenMayaUI as apiUI
 
 modulePath = os.path.dirname(__file__)
@@ -45,16 +54,16 @@ def setup_ui(uifile, base_instance=None):
 				setattr(base_instance, member, getattr(ui, member))
 		return ui
 
-class tool_widget(QtWidgets.QWidget):
+class tool_widget(QWidget):
 
 	tool_command = str()
 	location 	 = str()
 
-	saveSetting = QtCore.Signal(str)
+	saveSetting = Signal(str)
 
 	def __init__(self,  parent = None, modulename = '', command = '', location = ''):
 		super(tool_widget, self).__init__(parent)
-		# QtWidgets.QWidget.__init__(parent)
+		# QWidget.__init__(parent)
 
 		self.parent = parent
 		self.tool_command = command
@@ -66,20 +75,20 @@ class tool_widget(QtWidgets.QWidget):
 	def setupUi(self):
 
 		# ===================== MAIN WIDGET =====================
-		self.horizontalLayout = QtWidgets.QHBoxLayout( self )
-		self.groupbox = QtWidgets.QGroupBox(self)
-		self.layout = QtWidgets.QVBoxLayout(self.groupbox)
+		self.horizontalLayout = QHBoxLayout( self )
+		self.groupbox = QGroupBox(self)
+		self.layout = QVBoxLayout(self.groupbox)
 
-		self.H_layout = QtWidgets.QHBoxLayout( self)
-		self.label 	= QtWidgets.QLabel(self)
-		self.openLocation = QtWidgets.QPushButton(self.groupbox)
+		self.H_layout = QHBoxLayout( self)
+		self.label 	= QLabel(self)
+		self.openLocation = QPushButton(self.groupbox)
 		self.openLocation.setText("Open folder")
 
 		self.groupbox.setLayout(self.layout)
-		self.luanch_button = QtWidgets.QPushButton(self)
+		self.luanch_button = QPushButton(self)
 		self.luanch_button.setText("Luanch")
-		self.setting_button= QtWidgets.QPushButton(self)
-		self.setting_button.setIcon(QtGui.QIcon(modulePath + '/icon/gear.png'))
+		self.setting_button= QPushButton(self)
+		self.setting_button.setIcon(QIcon(modulePath + '/icon/gear.png'))
 		
 		self.H_layout.addWidget(self.label)
 		self.H_layout.addWidget(self.openLocation)
@@ -105,18 +114,18 @@ class tool_widget(QtWidgets.QWidget):
 		self.groupbox.setStyleSheet('''QGroupBox {font: bold;}''')
 
 		# ===================== SETTING WIDGET =====================
-		self.setting_widget = QtWidgets.QWidget()
+		self.setting_widget = QWidget()
 		self.setting_widget.resize(450, 400)
-		setting_V_layout = QtWidgets.QVBoxLayout( self.setting_widget )
-		setting_locationLabel = QtWidgets.QLabel(self.setting_widget)
+		setting_V_layout = QVBoxLayout( self.setting_widget )
+		setting_locationLabel = QLabel(self.setting_widget)
 		setting_locationLabel.setText("Location :")
-		self.setting_location = QtWidgets.QLineEdit(self.setting_widget)
-		setting_label = QtWidgets.QLabel(self.setting_widget)
+		self.setting_location = QLineEdit(self.setting_widget)
+		setting_label = QLabel(self.setting_widget)
 		setting_label.setText("command :")
-		self.setting_commandEditor = QtWidgets.QTextEdit(self.setting_widget)
-		self.setting_commandEditor.setWordWrapMode(QtGui.QTextOption.NoWrap)
+		self.setting_commandEditor = QTextEdit(self.setting_widget)
+		self.setting_commandEditor.setWordWrapMode(QTextOption.NoWrap)
 		self.setting_commandEditor.setPlainText(self.tool_command)
-		self.setting_saveSetting = QtWidgets.QPushButton(self.setting_widget)
+		self.setting_saveSetting = QPushButton(self.setting_widget)
 		self.setting_saveSetting.setText("save setting")
 
 		setting_V_layout.addWidget(setting_locationLabel)
@@ -166,11 +175,11 @@ class tool_widget(QtWidgets.QWidget):
 
 		if is_link and self.tool_command != '':
 			status = "Status : Linked"
-			pixmap = QtGui.QPixmap( modulePath + '/icon/linked.png')
+			pixmap = QPixmap( modulePath + '/icon/linked.png')
 			self.label.setPixmap(pixmap)
 		else :
 			status = "Status : Not linked"
-			pixmap = QtGui.QPixmap( modulePath + '/icon/unlinked.png')
+			pixmap = QPixmap( modulePath + '/icon/unlinked.png')
 			self.label.setPixmap(pixmap)
 
 		# self.label.setText(status)
@@ -201,16 +210,25 @@ class tool_widget(QtWidgets.QWidget):
 			traceback.print_exc()
 			print(str(e) + "\nPlease check your tool's setting.")
 
-class dev_tools_controller(QtWidgets.QWidget):
+class dev_tools_controller(QMainWindow):
 
 	def __init__(self, parent = None):
 		super(dev_tools_controller, self).__init__(parent)
-		# QtWidgets.QMainWindow.__init__(parent)
+		# QMainWindow.__init__(parent)
 
 		UI_path = modulePath + '/ui/devTools_manager.ui'
 
+		# # ---- LoadUI -----
+		# self.base_instance = setup_ui(UI_path, self)
+		# # -----------------
+
 		# ---- LoadUI -----
-		self.base_instance = setup_ui(UI_path, self)
+		loader = QUiLoader()
+		currentDir = os.path.dirname(__file__)
+		file = QFile( UI_path )
+		file.open(QFile.ReadOnly)
+		self.ui = loader.load(file, parentWidget = self)
+		file.close()
 		# -----------------
 
 		# print self.base_instance
@@ -225,6 +243,8 @@ class dev_tools_controller(QtWidgets.QWidget):
 		self.__setupUI()
 		self.__initConnect()
 
+		self.ui.show()
+
 	def __setupPythonPath(self):
 		''' Append container's location path to PythonPath '''
 
@@ -237,14 +257,14 @@ class dev_tools_controller(QtWidgets.QWidget):
 		self.__setupPythonPath()
 
 		# Clear tools list widget
-		self.tools_listWidget.clear()
+		self.ui.tools_listWidget.clear()
 		# Re-setui UI
 		self.__setupUI()
 
 	def __setupUI(self):
 		''' setup UI '''
 
-		self.pushButton_refresh.setIcon(QtGui.QIcon(modulePath + "/icon/refresh.png"))
+		self.ui.pushButton_refresh.setIcon(QIcon(modulePath + "/icon/refresh.png"))
 
 		# ===== set main tool page =====
 		# Create button
@@ -256,7 +276,7 @@ class dev_tools_controller(QtWidgets.QWidget):
 			location = self.tool_data["tools"][module]['location']
 
 			# tools_listWidget
-			item = QtWidgets.QListWidgetItem(self.tools_listWidget)
+			item = QListWidgetItem(self.ui.tools_listWidget)
 
 			item_widget = tool_widget( parent = self, modulename = module, command = runcmd)
 			item_widget.setTitle(module)
@@ -264,18 +284,18 @@ class dev_tools_controller(QtWidgets.QWidget):
 			item_widget.setLocation(location)
 
 			item.setSizeHint( item_widget.sizeHint() )
-			self.tools_listWidget.addItem( item )
-			self.tools_listWidget.setItemWidget( item, item_widget)
+			self.ui.tools_listWidget.addItem( item )
+			self.ui.tools_listWidget.setItemWidget( item, item_widget)
 
 		# ===== Setup Setting page =====
-		self.lineEdit_location.setText(self.tool_data['setting']['container_path'])
+		self.ui.lineEdit_location.setText(self.tool_data['setting']['container_path'])
 
 	def __initConnect(self):
 		''' Initial connection '''
 
-		self.pushButton_saveSetting.clicked.connect(self.pushButton_saveSetting_onClicked)
-		self.pushButton_refresh.clicked.connect(self.__refresh)
-		self.pushButton_location_openExplorer.clicked.connect(self.pushButton_location_openExplorer_onClicked)
+		self.ui.pushButton_saveSetting.clicked.connect(self.pushButton_saveSetting_onClicked)
+		self.ui.pushButton_refresh.clicked.connect(self.__refresh)
+		self.ui.pushButton_location_openExplorer.clicked.connect(self.pushButton_location_openExplorer_onClicked)
 
 	def checkLinkStatus(self,modulename, modulePath):
 
@@ -285,7 +305,7 @@ class dev_tools_controller(QtWidgets.QWidget):
 		# Get corrent data
 
 		# Get location
-		location = self.lineEdit_location.text()
+		location = self.ui.lineEdit_location.text()
 
 		# Update data
 		self.tool_data['setting']['container_path'] = location
@@ -293,13 +313,13 @@ class dev_tools_controller(QtWidgets.QWidget):
 		save_config(config_filePath, self.tool_data)
 
 	def pushButton_location_openExplorer_onClicked(self):
-		dialog = QtWidgets.QFileDialog(self.base_instance)
-		dialog.setFileMode(QtWidgets.QFileDialog.Directory)
-		dialog.setViewMode(QtWidgets.QFileDialog.Detail)
+		dialog = QFileDialog(self.ui)
+		dialog.setFileMode(QFileDialog.Directory)
+		dialog.setViewMode(QFileDialog.Detail)
 		if dialog.exec_():
 			fileNames = dialog.selectedFiles()
 
-			print self.lineEdit_location.setText(fileNames[0])
+			print self.ui.lineEdit_location.setText(fileNames[0])
 
 # #####################################################################
 
@@ -367,7 +387,7 @@ def getMayaWindow():
 	"""
 	ptr = apiUI.MQtUtil.mainWindow()
 	if ptr is not None:
-		return sbk.wrapInstance(long(ptr), QtWidgets.QMainWindow)
+		return shiboken.wrapInstance(long(ptr), QMainWindow)
 
 def clearUI():
 	if cmds.window(__UIName__, exists=True):
@@ -377,13 +397,13 @@ def clearUI():
 def run():
 	clearUI()
 	app = dev_tools_controller( getMayaWindow() )
-	app.show()
+	# app.run()
 
 if __name__ == '__main__':
 	print("run")
 	# run()
 
-	app = QtWidgets.QApplication(sys.argv)
+	app = QApplication(sys.argv)
 	form = dev_tools_controller(getMayaWindow())
 	form.show()
 	app.exec_()
