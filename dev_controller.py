@@ -54,6 +54,33 @@ def setup_ui(uifile, base_instance=None):
 				setattr(base_instance, member, getattr(ui, member))
 		return ui
 
+class RaiseError(QDialog):
+
+	def __init__(self, parent = None, title = '', message = '', state = 'error'):
+		super(RaiseError, self).__init__(parent)
+
+		self.setWindowTitle(title)
+
+		mainLayout = QVBoxLayout()
+		headerLayout = QHBoxLayout()
+		icon = QLabel()
+		icon.setPixmap(QPixmap(modulePath + '/icon/error.png').scaled(32,32))
+		label = QLabel()
+		label.setText(title)
+		label.setStyleSheet("font-size: 23px;")
+		headerLayout.addWidget(icon)
+		headerLayout.addWidget(label)
+		headerLayout.setStretch(1, 1)
+		textEdit = QTextEdit()
+		textEdit.setText(message)
+		textEdit.setReadOnly(True)
+		textEdit.setWordWrapMode(QTextOption.NoWrap)
+
+		mainLayout.addLayout(headerLayout)
+		mainLayout.addWidget(textEdit)
+
+		self.setLayout(mainLayout)
+
 class tool_widget(QWidget):
 
 	tool_command = str()
@@ -61,11 +88,11 @@ class tool_widget(QWidget):
 
 	saveSetting = Signal(str)
 
-	def __init__(self,  parent = None, modulename = '', command = '', location = ''):
+	def __init__(self,  parent = None, parentwidget = None, modulename = '', command = '', location = ''):
 		super(tool_widget, self).__init__(parent)
 		# QWidget.__init__(parent)
 
-		self.parent = parent
+		self._parentwidget = parentwidget
 		self.tool_command = command
 		self.modulename = modulename
 
@@ -152,7 +179,7 @@ class tool_widget(QWidget):
 
 	def __updateCommand(self):
 		''' update command to '''
-		raw_data = self.parent.tool_data
+		raw_data = self._parentwidget.tool_data
 
 		command  = self.setting_commandEditor.toPlainText()
 		location = self.setting_location.text()
@@ -207,8 +234,15 @@ class tool_widget(QWidget):
 			exec(self.tool_command)
 		except Exception as e:
 			print('\n============ ERROR ============\n')
-			traceback.print_exc()
-			print(str(e) + "\nPlease check your tool's setting.")
+			try:
+				_exc = traceback.format_exc(e)
+				_m = _exc + "\n\nPlease check your tool's setting."
+				_d = RaiseError(parent=self, title='Excecute Error', message=_m, state='error')
+				_d.exec_()
+			except Exception as e :
+				traceback.print_exc(e)
+			# _dialog = QMessageBox.critical(self, "Execute error", _m)
+			# _dialog.exec_()
 
 class dev_tools_controller(QMainWindow):
 
@@ -278,7 +312,7 @@ class dev_tools_controller(QMainWindow):
 			# tools_listWidget
 			item = QListWidgetItem(self.ui.tools_listWidget)
 
-			item_widget = tool_widget( parent = self, modulename = module, command = runcmd)
+			item_widget = tool_widget(parent = self.ui, parentwidget = self, modulename = module, command = runcmd)
 			item_widget.setTitle(module)
 			item_widget.setLinkStatus(self.checkLinkStatus(modulename = module, modulePath = location))
 			item_widget.setLocation(location)
